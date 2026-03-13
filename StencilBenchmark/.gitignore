@@ -1,0 +1,8 @@
+# Build folder
+/out
+/.vs
+/build
+
+# Resource files
+*.jpg
+*.png
