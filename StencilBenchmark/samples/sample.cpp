@@ -12,7 +12,7 @@ int main()
     std::filesystem::path current_directory = std::filesystem::current_path();
     std::cout << "Current working directory: " << current_directory << std::endl;
 
-    int count_of_pixels_k = 4200;
+    int count_of_pixels_k = 16800;
     string load_from_filename = "../../../../resources/input/" + to_string(count_of_pixels_k) +"k.jpg";
     string load_to_filename = "../../../../resources/output/" + to_string(count_of_pixels_k) + "k.jpg";
 
