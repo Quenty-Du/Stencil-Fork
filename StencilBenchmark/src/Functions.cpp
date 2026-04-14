@@ -1,44 +1,50 @@
 #include <Functions.h>
 #include <Class_Kernel.h>
+#include <Class_Image.h>
+
 #include <cmath>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 
 
-cv::Mat convolutionApply(const Kernel& kernel, cv::Mat& image)
+Image convolutionApply(const Kernel& kernel, Image& image)
 {
-    if (kernel.getSize() > image.rows || kernel.getSize() > image.cols) {
+    if (kernel.getSize() > image.imHeight() || kernel.getSize() > image.imWidth()) {
         throw std::invalid_argument("Kernel is larger than image");
     }
 
-    int result_rows = image.rows - kernel.getSize() + 1;
-    int result_cols = image.cols - kernel.getSize() + 1;
-    cv::Mat result(result_rows, result_cols, CV_32FC3, cv::Scalar(0, 0, 0));
+    int result_height = image.imHeight() - kernel.getSize() + 1;
+    int result_width = image.imWidth() - kernel.getSize() + 1;
+    Image result(result_width, result_height, 3);
+
+    int kernel_size = kernel.getSize();
 
     // Проход по каналам
     for (int channel = 0; channel < 3; ++channel)
     {
         // Проход по пикселям изображения (с учетом границ размера ядра)
-        for (int result_y = 0; result_y < result_rows; ++result_y)
+        for (int result_ycord = 0; result_ycord < result_height; ++result_ycord)
         {
-            for (int result_x = 0; result_x < result_cols; ++result_x)
+            for (int result_xcord = 0; result_xcord < result_width; ++result_xcord)
             {
+                float convolution_result = 0.0f;
                 // Операция свертки
-                for (int kernel_y = 0; kernel_y < kernel.getSize(); ++kernel_y)
+                for (int kernel_ycord = 0; kernel_ycord < kernel_size; ++kernel_ycord)
                 {
-                    for (int kernel_x = 0; kernel_x < kernel.getSize(); ++kernel_x)
+                    for (int kernel_xcord = 0; kernel_xcord < kernel_size; ++kernel_xcord)
                     {
-                        result.ptr<cv::Vec3f>(result_y)[result_x][channel] += 
-                        image.ptr<cv::Vec3f>(result_y + kernel_y)[result_x + kernel_x][channel] 
-                        * kernel.getElement(kernel_x, kernel_y);
-
+                        float temp_result = image.imGet(result_xcord + kernel_xcord, result_ycord + kernel_ycord, channel) * kernel.kerGet(kernel_xcord, kernel_ycord);
+                        convolution_result += temp_result;
                     }
                 }
+
+                result.imSet(result_xcord, result_ycord, channel, convolution_result);
             }
         }
     }
 
+    std::cout << "Convolution was successfully done!" << std::endl;
     return result;
 }
 
@@ -51,6 +57,7 @@ std::vector<float> convertToFloat(const std::vector<uint8_t>& input) {
         floatData[i] = static_cast<float>(input[i]);
     }
 
+    std::cout << "CHAR Vector was converted to FLOAT!" << std::endl;
     return floatData;
 }
 
@@ -64,6 +71,7 @@ std::vector<uint8_t> convertToChar(const std::vector<float>& input) {
         static_cast<uint8_t>(std::clamp(std::round(input[i]), 0.0f, 255.0f));
     }
 
+    std::cout << "FLOAT Vector was converted to CHAR!" << std::endl;
     return charData;
 }
 
@@ -89,38 +97,49 @@ void normalize(std::vector<float>& input) {
         input[i] = std::clamp((input[i] - minVal) * 255.0f / range, 0.0f, 255.0f);
     }
 
+    std::cout << "Image was normalized!" << std::endl;
     return;
 }
 
 
-cv::Mat Sobel_operator(cv::Mat& image)
+Image Sobel_operator(Image& image)
 {
     Kernel horizontal (3);
     Kernel vertical (3);
-
-    float h[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
-    float v[] = {1, 2, 1, 0, 0, 0, -1, -2, -1};
-
+    
+    std::vector<float> h = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+    std::vector<float> v = {1, 2, 1, 0, 0, 0, -1, -2, -1};
+    
     horizontal.fillKernel(3, h);
     vertical.fillKernel(3, v);
 
-    cv::Mat result_h = convolutionApply(horizontal, image);
-    cv::Mat result_v = convolutionApply(vertical, image);
+    std::cout << "Successfully filled kernels for SOBEL!" << std::endl;
+    std::cout << "Starting convolution..." << std::endl;
 
-    cv::Mat result(result_h.rows, result_h.cols, CV_32FC3, cv::Scalar(0, 0, 0));
+    Image result_h = convolutionApply(horizontal, image);
+    std::cout << "Horizontal kernel is successfully completed!" << std::endl;
 
+    Image result_v = convolutionApply(vertical, image);
+    std::cout << "Vertical kernel is successfully completed!" << std::endl;
+
+    int width = result_h.imWidth();
+    int height = result_h.imHeight();
+
+    Image result(width, height, 3);
+
+    std::cout << "Starting to combine the result.." << std::endl;
     for (int channel = 0; channel < 3; ++channel)
     {
-        for (int y = 0; y < result.rows; ++y)
+        for (int y = 0; y < height; ++y)
         {
-            for (int x = 0; x < result.cols; ++x)
+            for (int x = 0; x < width; ++x)
             {
-                result.ptr<cv::Vec3f>(y)[x][channel] = 
-                sqrt(pow(result_h.ptr<cv::Vec3f>(y)[x][channel], 2) + 
-                pow(result_v.ptr<cv::Vec3f>(y)[x][channel], 2));
+                result.imSet(x, y, channel, sqrt(pow(result_h.imGet(x, y, channel), 2) + pow(result_v.imGet(x, y, channel), 2)));
             }
         }
     }
+
+    std::cout << "Successfully combine the result!" << std::endl;
 
     return result;
 }
@@ -131,7 +150,7 @@ bool loadBMP(const std::string& filename, std::vector<uint8_t>& bgrData,
     std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
-        std::cerr << "Ошибка: не удалось открыть файл " << filename << std::endl;
+        std::cerr << "Error: Failed to open the file " << filename << std::endl;
         return false;
     }
 
@@ -140,48 +159,45 @@ bool loadBMP(const std::string& filename, std::vector<uint8_t>& bgrData,
     file.read(reinterpret_cast<char*>(&fileHeader), sizeof(BMPFileHeader));
 
     if (fileHeader.bfType != 0x4D42) {
-        std::cerr << "Ошибка: формат файла не является BMP" << std::endl;
+        std::cerr << "Error: file format is not a BMP" << std::endl;
         return false;
     }
 
     BMPInfoHeader infoHeader;
 
     file.read(reinterpret_cast<char*>(&infoHeader), sizeof(BMPInfoHeader));
-
+    
     if (infoHeader.biSize != 40) {
-        std::cerr << "Ошибка: ридер поддерживает только стандартный формат BMP, размер заголовка которого 40 байт" << std::endl;
+        std::cerr << "Error: reader supports only file headers of 40 bit in size" << std::endl;
         return false;
     }
 
     if (infoHeader.biBitCount != 24) {
-        std::cerr << "Ошибка: поддерживаются только 24-битные BMP (3 слоя: R, G, B, по 8 бит на каждый)" << std::endl;
+        std::cerr << "Error: reader supports only 24-bit pixel files" << std::endl;
         return false;
     }
 
     if (infoHeader.biCompression != 0) {
-        std::cerr << "Ошибка: ридер не поддерживает сжатые файлы" << std::endl;
+        std::cerr << "Error: reader doesn't support compressed files" << std::endl;
         return false;
     }
 
     width = infoHeader.biWidth;
-
     height = (infoHeader.biHeight > 0) ? infoHeader.biHeight : -infoHeader.biHeight;
 
     bool bottomUp = (infoHeader.biHeight > 0);
-
     int bytesPerRow = (width * 3 + 3) & ~3;
 
     file.seekg(fileHeader.bfOffBits, std::ios::beg);
 
     bgrData.resize(width * height * 3);
-
     std::vector<uint8_t> rowBuffer(bytesPerRow);
 
     for (int y = 0; y < height; y++) {
         file.read(reinterpret_cast<char*>(rowBuffer.data()), bytesPerRow);
 
         if (!file) {
-            std::cerr << "Ошибка: не удалось прочитать данные" << std::endl;
+            std::cerr << "Error: failed to read data" << std::endl;
             return false;
         }
 
@@ -203,6 +219,7 @@ bool loadBMP(const std::string& filename, std::vector<uint8_t>& bgrData,
     }
 
     file.close();
+    std::cout << "Successfully opened the image!" << std::endl;
     return true;
 }
 
@@ -233,7 +250,7 @@ bool saveBMP(const std::string& filename, const std::vector<uint8_t>& bgrData, i
 
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Ошибка: не удалось создать или открыть для сохранения файл " << filename << std::endl;
+        std::cerr << "Error: failed to create or open for saving file " << filename << std::endl;
         return false;
     }
 
@@ -241,12 +258,12 @@ bool saveBMP(const std::string& filename, const std::vector<uint8_t>& bgrData, i
     file.write(reinterpret_cast<const char*>(&infoHeader), sizeof(infoHeader));
 
     if (!file.good()) {
-        std::cerr << "Ошибка: запиcm заголовков не удалась" << std::endl;
+        std::cerr << "Error: failed to write headers" << std::endl;
         return false;
     }
 
     std::vector<uint8_t> rowBuffer(bytesPerRow, 0);
-    for (int y = 0; y < height; ++y) {
+    for (int y = height - 1; y >= 0; --y) {
         for (int x = 0; x < width; ++x) {
             int srcIndex = (y * width + x) * 3;
             rowBuffer[x * 3] = bgrData[srcIndex];
@@ -255,10 +272,11 @@ bool saveBMP(const std::string& filename, const std::vector<uint8_t>& bgrData, i
         }
         file.write(reinterpret_cast<const char*>(rowBuffer.data()), bytesPerRow);
         if (!file.good()) {
-            std::cerr << "Ошибка: запись строки " << y << " не удалась" << std::endl;
+            std::cerr << "Error: failed to write " << y << " string" << std::endl;
             return false;
         }
     }
 
+    std::cout << "Successfully save the image!" << std::endl;
     return true;
 }

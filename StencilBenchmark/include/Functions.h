@@ -1,15 +1,15 @@
 #ifndef FUNCTIONS_H
 #define FUNCTIONS_H
 
-#include <opencv2/opencv.hpp>
+#include <Class_Image.h>
 #include <Class_Kernel.h>
 #include <vector>
 #include <cstdint>
 #include <string>
 
-cv::Mat convolutionApply(const Kernel& kernel, cv::Mat& image);
+Image convolutionApply(const Kernel& kernel, Image& image);
 
-cv::Mat Sobel_operator(cv::Mat& image);
+Image Sobel_operator(Image& image);
 
 
 #pragma pack(push, 1)
