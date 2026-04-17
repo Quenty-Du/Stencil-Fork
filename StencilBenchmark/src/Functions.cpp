@@ -7,6 +7,29 @@
 #include <iostream>
 #include <fstream>
 
+Image upScale(const Image& input, int width_scale, int height_scale) {
+    std::cout << "Starting scalying image..." << std::endl;
+    int width = input.imWidth();
+    int height = input.imHeight();
+
+    Image result(width * width_scale, height * height_scale, 3);
+
+    for (int channel = 0; channel < 3; ++channel) {
+        for (int w = 0; w < width; ++w) {
+            for (int h = 0; h < height; ++h) {
+                for (int ws = 0; ws < width_scale; ++ws) {
+                    for (int hs = 0; hs < height_scale; ++hs) {
+                        result.imSet(w + width * ws, h + height * hs, channel, input.imGet(w, h, channel));
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << "The image is scaled with: Wx" << width_scale << ", Hx" << height_scale << "!" << std::endl;
+    return result;
+}
+
 
 Image convolutionApply(const Kernel& kernel, Image& image)
 {
@@ -168,7 +191,7 @@ bool loadBMP(const std::string& filename, std::vector<uint8_t>& bgrData,
     file.read(reinterpret_cast<char*>(&infoHeader), sizeof(BMPInfoHeader));
     
     if (infoHeader.biSize != 40) {
-        std::cerr << "Error: reader supports only file headers of 40 bit in size" << std::endl;
+        std::cerr << "Error: reader supports only file headers of 40 bit in size." << " Here is " << infoHeader.biSize << std::endl;
         return false;
     }
 

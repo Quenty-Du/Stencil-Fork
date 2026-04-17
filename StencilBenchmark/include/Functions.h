@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <string>
 
+Image upScale(const Image& image, int witdh_scale, int height_scale);
+
 Image convolutionApply(const Kernel& kernel, Image& image);
 
 Image Sobel_operator(Image& image);
