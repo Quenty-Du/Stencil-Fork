@@ -7,3 +7,6 @@
 *.jpg
 *.png
 *.bmp
+
+# Log files
+resources/output/timelog.txt

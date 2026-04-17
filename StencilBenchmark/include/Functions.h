@@ -3,13 +3,15 @@
 
 #include <Class_Image.h>
 #include <Class_Kernel.h>
+
+#include <chrono>
 #include <vector>
 #include <cstdint>
 #include <string>
 
 Image upScale(const Image& image, int witdh_scale, int height_scale);
 
-Image convolutionApply(const Kernel& kernel, Image& image);
+Image convolutionApply(const Kernel& kernel, Image& image, std::chrono::duration<double>& timer);
 
 Image Sobel_operator(Image& image);
 

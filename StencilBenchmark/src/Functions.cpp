@@ -31,7 +31,7 @@ Image upScale(const Image& input, int width_scale, int height_scale) {
 }
 
 
-Image convolutionApply(const Kernel& kernel, Image& image)
+Image convolutionApply(const Kernel& kernel, Image& image, std::chrono::duration<double>& timer)
 {
     if (kernel.getSize() > image.imHeight() || kernel.getSize() > image.imWidth()) {
         throw std::invalid_argument("Kernel is larger than image");
@@ -42,6 +42,8 @@ Image convolutionApply(const Kernel& kernel, Image& image)
     Image result(result_width, result_height, 3);
 
     int kernel_size = kernel.getSize();
+
+    auto start = std::chrono::steady_clock::now();
 
     // Проход по каналам
     for (int channel = 0; channel < 3; ++channel)
@@ -66,6 +68,9 @@ Image convolutionApply(const Kernel& kernel, Image& image)
             }
         }
     }
+
+    auto end = std::chrono::steady_clock::now();
+    timer = end - start;
 
     std::cout << "Convolution was successfully done!" << std::endl;
     return result;
@@ -139,11 +144,25 @@ Image Sobel_operator(Image& image)
     std::cout << "Successfully filled kernels for SOBEL!" << std::endl;
     std::cout << "Starting convolution..." << std::endl;
 
-    Image result_h = convolutionApply(horizontal, image);
+    std::chrono::duration<double> timer_1;
+    std::chrono::duration<double> timer_2;
+
+    Image result_h = convolutionApply(horizontal, image, timer_1);
     std::cout << "Horizontal kernel is successfully completed!" << std::endl;
 
-    Image result_v = convolutionApply(vertical, image);
+    Image result_v = convolutionApply(vertical, image, timer_2);
     std::cout << "Vertical kernel is successfully completed!" << std::endl;
+
+    // Запись в файл логов
+    std::ofstream log("./resources/output/timelog.txt", std::ios::app);
+    if (log.is_open()) {
+        log << std::to_string(image.imWidth() * image.imHeight() * 3) << ", " << std::to_string((timer_1 + timer_2).count() / 2.0) << std::endl;
+        std::cout << "Writing to log file.." << std::endl;
+    }
+    else {
+        std::cerr << "Error: failed to open log file" << std::endl;
+    }
+    log.close();
 
     int width = result_h.imWidth();
     int height = result_h.imHeight();

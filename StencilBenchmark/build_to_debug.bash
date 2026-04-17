@@ -1,4 +1,3 @@
-@echo off
+#!/bin/bash -x
 cmake -S . -B build
 cmake --build build --config Debug
-pause
